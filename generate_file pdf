@@ -1,0 +1,252 @@
+import shutil
+from time import sleep
+
+import docx
+from docx.shared import Inches
+import datetime
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+import os
+from pathlib import Path
+import subprocess
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4, letter
+from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfFileWriter
+import datetime
+
+
+def generate_footer(records, path):
+    footer = {
+        "Signed By: ": records['Signed By: '],
+        'Reason: ': records['Reason: '],
+        'Signed using ': records['Signed using '],
+        "Device ID: ": records['Device ID: '],
+        'IMEI: ': records['IMEI: '],
+        'IP Address: ': records['IP Address: '],
+        'Timestamp: ': records['Timestamp: '],
+    }
+    width, height = letter
+
+    can = canvas.Canvas(path + '_footer.pdf', pagesize=letter)
+
+    y = 0.07
+    for i, j in footer.items():
+        can.setFont("Helvetica", 6)
+        can.drawString(0.075 * width, y * height, text=str(i) + str(j))
+        y -= 0.01
+    can.save()
+
+
+def merge_pdf(target_pdf, convert):
+    footer = target_pdf + '_footer.pdf'
+    v = os.path.abspath(target_pdf + '.pdf')
+    target_pdf = PdfFileReader(v)
+    pdf_writer = PdfFileWriter()
+    if footer is not None:
+        footer_page = PdfFileReader(footer).getPage(0)
+
+    for page in range(target_pdf.getNumPages()):
+        current_page = target_pdf.getPage(page)
+        if footer is not None:
+            current_page.mergePage(footer_page)
+        pdf_writer.addPage(current_page)
+
+    with open(convert, 'wb') as pdf:
+        pdf_writer.write(pdf)
+
+
+def pdf_linux(filedoc):
+    cmd = 'libreoffice --convert-to pdf'.split() + [filedoc + '.docx']
+    p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    p.wait(timeout=10)
+    shutil.move(os.getcwd() + '/' + filedoc.split('/')[-1] + '.pdf', filedoc + '.pdf')
+
+
+def wordcon(records, wordname):
+    record_summary = {
+        'LOAN ID/ SERIAL ID': records['LOAN ID/ SERIAL ID'],
+        'CITY': records['CITY'],
+        'PROSPECT No.': records['PROSPECT No.'],
+    }
+    record_schedule = {
+        'LENDER': records['LENDER'],
+        'PLATFORM': records['PLATFORM'],
+        'LOAN AMOUNT': records['LOAN AMOUNT'],
+        'RATE OF INTEREST': records['RATE OF INTEREST'],
+        'PURPOSE OF LOAN': records['PURPOSE OF LOAN'],
+        'PLATFORM CREDIT PROCESSING FEES': records['PLATFORM CREDIT PROCESSING FEES'],
+        'PLATFORM FEES': records['PLATFORM FEES'],
+        'SERVICE CHARGES': records['SERVICE CHARGES'],
+        'PREPAYMENT CHARGES': records['PREPAYMENT CHARGES'],
+        'DEFAULT CHARGES': records['DEFAULT CHARGES'],
+        'NACH DISHONOR': records['NACH DISHONOR'],
+        'BANKING DETAILS FOR DISBURSAL OF LOAN': records['BANKING DETAILS FOR DISBURSAL OF LOAN'],
+    }
+    record_docs = {
+        'PAN Card or Form 60': records['PAN Card or Form 60'],
+        'Passport/ Voter ID/ Masked Aadhar/ Driver License': records[
+            'Passport/ Voter ID/ Masked Aadhar/ Driver License'],
+        'Last 3 Months Bank Statement or Other Income Proof': records[
+            'Last 3 Months Bank Statement or Other Income Proof'],
+        'Any Other Document Requested by Lender': records['Any Other Document Requested by Lender'],
+    }
+
+    number = 1
+    count = 1
+    number_of_tables = [1, 2, 3, 4]
+    document = docx.Document()
+    company = records['LENDER']
+    s = company.replace(" ", "").lower()
+
+    h = document.add_paragraph('LOAN APPLICATION FORM')
+    h.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+    for k in number_of_tables:
+        if k == 1:
+            table = document.add_table(rows=1, cols=2)
+            table.style = 'Table Grid'
+            hdr_cells = table.rows[0].cells
+            hdr_cells[0].text = 'ACCOUNT TYPE:'
+            hdr_cells[1].text = 'Personal'
+            for i, j in records.items():
+                if count <= 21:
+                    row_cells = table.add_row().cells
+                    row_cells[0].text = str(i)
+                    row_cells[1].text = str(j)
+                    count += 1
+                else:
+                    pass
+        elif k == 2:
+            document.add_paragraph()
+            p = document.add_paragraph('SUMMARY OF LOAN TERMS')
+            p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            table = document.add_table(rows=1, cols=3)
+            table.style = 'Table Grid'
+            hdr_cell = table.rows[0].cells
+            hdr_cell[0].text = 'S.NO.'
+            hdr_cell[1].text = 'PARTICULARS'
+            hdr_cell[2].text = 'DETAILS'
+            for i, j in record_summary.items():
+                row_cells = table.add_row().cells
+                row_cells[0].text = str(number)
+                row_cells[1].text = str(i)
+                row_cells[2].text = str(j)
+                number += 1
+
+
+        elif k == 3:
+            document.add_paragraph()
+            document.add_paragraph(
+                'I Understand that the terms of the Loan to be provided to me Lender if approved as per the internal policies and law shall be as specified below ("Loan")')
+            h = document.add_paragraph('SCHEDULE')
+            h.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            table = document.add_table(rows=1, cols=2)
+            table.style = 'Table Grid'
+            hdr_cells = table.rows[0].cells
+            hdr_cells[0].text = 'PARTICULARS'
+            hdr_cells[1].text = 'DETAILS'
+            for i, j in record_schedule.items():
+                row_cells = table.add_row().cells
+                row_cells[0].text = str(i)
+                row_cells[1].text = str(j)
+
+        elif k == 4:
+            number = 1
+            document.add_paragraph()
+            table = document.add_table(rows=1, cols=3)
+            table.style = 'Table Grid'
+            hdr_cells = table.rows[0].cells
+            hdr_cells[0].text = 'S.NO.'
+            hdr_cells[1].text = 'Documents from the Applicants and the Co-Applicants (If Any)'
+            hdr_cells[2].text = 'Status'
+            for i, j in record_docs.items():
+                row_cells = table.add_row().cells
+                row_cells[0].text = str(number)
+                row_cells[1].text = str(i)
+                row_cells[2].text = str(j)
+                number += 1
+
+    document.add_paragraph()
+    p = document.add_paragraph('I acknowledge, understands and agrees that Lender has adopted risk-based pricing, which is arrived by taking into account, broad parameters like the customers financial and credit profile. I also understand all the terms listed above along with certain fees/ charges (as may be applicable) apply for the said Loan from the Lender. I further understand and acknowledge that the Processing Fees, One Time Onboarding Fees, Credit Reassessment Fees, Document Collection Fees, Agreement Fees along with applicable taxes, shall be paid to and collected by the platform- Credicxo Technologies Private Limited, which is a distinct and separate entity from the Lender. I have accepted that the acceptance of Loan under this Application Form places no obligation on the Lender to approve the Loan.                          ')
+    p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+
+    p = document.add_paragraph()
+    p.add_run('FORMAT OF GENERAL TERMS AND CONDITIONS FOR AVAILING CREDIT FACILITY FROM ').bold = True
+    p.add_run(company).bold = True
+    p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+
+
+    p = document.add_paragraph()
+    p.add_run(company + ' ("' + company + '")').bold = True
+    p.add_run(
+        ', a non-banking financial company registered with the Reserve Bank of India ("RBI"), having its registered office at 330, Mezanine Floor, Functional Industrial Estate, Patparganj, Delhi 110092 is providing credit facility ("Loan") to the borrowers, sourced by ')
+    p.add_run('Credicxo Technologies Pvt Ltd ').bold = True
+    p.add_run('("Service Provider"), ("You" or "User") on the Terms and Conditions ("T&Cs") as specified herein.                                                                                                  ')
+    p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+
+    p = document.add_paragraph('By clicking the "I Agree to the Terms and Conditions" check box, You are stating that You have read, understood and have agreed to be legally bound by all of these T&Cs, as amended from time to time, for availing the Loan.')
+    p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+    p = document.add_paragraph('Please note that these T&Cs constitute a legal agreement between ')
+    p.add_run(company).bold = True
+    p.add_run(', Service Provider and You and will be enforceable under all applicable laws prevalent in the Republic of India, to the same extent as if it was a physical contract.')
+    p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+
+    p = document.add_paragraph('Not with standing the aforesaid, you further agree to execute all such necessary documents including without limitation any letter, agreement, declaration or any other instrument, as may be required by ')
+    p.add_run(company).bold = True
+    p.add_run(', to give effect to the T&Cs contained herein.')
+    p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+    p = document.add_paragraph()
+    p.add_run('Terms and Conditions:-').bold = True
+    p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+    p = document.add_paragraph('1. You hereby avail such Loan Amount under this Loan provided by ')
+    p.add_run(company).bold = True
+    p.add_run(' for such Duration as specified in the Schedule I to this T&C.')
+    p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+    p = document.add_paragraph(
+        '2. The actual amount that shall be disbursed ("Disbursal Amount") to You shall be net of Platform Charages, specified in the Schedule I to this T&C.     ' + '\n\n' +
+        '3. The Disbursal Amount shall be disbursed to Your bank account, the details of which are furnished by You to the Service Provider.              ' + '\n\n' +
+        '4. You hereby authorize ' + company + ' to access and update information and data relating to Your credit history available with Credit Information Bureau (India) Limited (CIBIL) or any other agency authorised in this context by RBI.                                              '+'\n\n'+ '5. You shall be liable to pay interest ("Interest") on the Loan Amount at such rate/ amount as provided in the Schedule I to this T&C. Such Interest shall accrue on daily basis for the entire Duration and shall be payable on the due date ("Due Date"), that is to say, at the end of the Duration.                      ' + '\n\n' +
+        '6. On the Due Date, the repayment of the Loan Amount and Interest thereof, shall be made into the Bank Account, details of which has been provided in the Schedule I to this T&C.                                                    ' + '\n\n' +
+        '7. In case of shortfall in repayment of the Loan Amount and the Interest thereof, on Due Date, Interest shall continue to accrue at a higher amount, ("Overdue Interest"), as providedin the Schedule I, till the entire amounts due and payable ("Amounts Due") by You is repaid to ' + company + ' under this T&Cs to the full satisfaction of ' + company + ' ("Satisfaction Date").                              ' + '\n\n' +
+        '8. ' + company + ' may, at the sole discretion of ' + company + ', change the mode and manner of payment of any or all Amounts Due. You hereby agree that You shall make such payment in such manner and in accordance with such mode as may be directed by ' + company + ' in this regard.        ' + '\n\n' +
+        '9. In case of non-payment of the Loan Amount and the Interest thereof, on the Due Date, ' + company + ' shall have the right to exercise any right, power or remedy permitted to ' + company + ' by law, including by suit, in equity, or by action at law, or both, or otherwise.                                                     ' + '\n\n' +
+        '10. In addition to the aforesaid legal actions, ' + company + ' shall have an unqualified right to disclose or publish Your name in such manner and through such medium as ' + company + ' in its absolute discretion may think fit.                   ' + '\n\n' +
+        '11. You have the option to prepay the Loan Amount in full prior to the Due Date provided that on such prepayment You shall pay the Loan Amount along with the entire Interest, as would have been be due and payable by You on the Due Date.                                           ' + '\n\n' +
+        '12. You hereby agree that You shall be solely, absolutely and unconditionally liable for the repayment of all Amounts Due, from time to time, and You shall make such payment notwithstanding any reminder, demand, notice sent or issued by ' + company + ' or Service Provider to You in this regard.                                                                       ' + '\n\n' + \
+        '13. You hereby agree that You shall not, under any circumstances, withhold the payment of monies by You to ' + company + ' under these T&Cs.                                             ' + '\n\n' +
+        '14. In the event any statement or information furnished by You, to avail the Loan Amount from ' + company + ', is found to be untrue, incorrect or misleading in any manner whatsoever, ' + company + ' reserves the right to recall the entire Loan Amount and demand the payment of all Amounts Due to ' + company + ' at the sole discretion of ' + company + '.' + '\n\n' +
+        '15. You hereby agree that You have no objection in relation to any updates, messages or any other form of communication which You may receive, from time to time, on Your registered mobile number or email Id from ' + company + ' or the Service Provider.              ' + '\n\n' +
+        '16. In the event any tax or any other amount, under applicable laws, is paid by ' + company + ' on Your behalf to any statutory or government authority or any other person or entity in relation to the Loan Amount granted by ' + company + ' or pursuant to any legal proceedings to which You are a party, during the subsistence of these T&Cs, You agree to forthwith reimburse ' + company + ' on the demand for such payment by ' + company + '.                                                                        ' + '\n\n' +
+        '17. You hereby expressly recognize and accept that ' + company + ' shall be absolutely entitled and have full power and authority to sell, assign or transfer in any manner, in whole or in part, to any other third party in such manner and form as ' + company + ' may, in the sole discretion of ' + company + ', may decide. Further, You agree that You shall be bound to fulfil and perform all obligations to such transferee or assignee in accordance with these T&Cs.                                         ' + '\n\n' +
+        '18. You hereby agree that You shall not have the right to assign, sell, transfer in any manner Your rights and obligations under this T&Cs to any other person without the prior approval of ' + company + '.' + '\n\n' +
+        '19. You hereby agree that ' + company + ' shall have the right to amend any of the T&Cs or any other document, executed between You and ' + company + ' pursuant to these T&Cs. It is hereby clarified that You shall be intimated and informed in relation to the amendment to the T&Cs, if any, in such form and manner as ' + company + ', in the sole discretion of ' + company + ', may decide. It is hereby further clarified that where the said T&Cs is amended/altered/ modified/ extended in any manner, unless intimated to the You, shall not be binding on You.             ' + '\n\n' +
+        '20. This T&Cs shall be effective from the date of execution of this agreement and shall continue in full force and effect till the Satisfaction Date.      ' + '\n\n' +
+        '21. This T&Cs shall be governed by and construed in accordance with the laws of the Republic of India. The courts either in Delhi shall have exclusive jurisdiction over all matters arising pursuant to this T&Cs.           ' + '\n\n\n' +
+        '22. The Borrowers shall within 7 Business Days of demand, indemnify the Lender against any cost, loss or liability incurred by that Lender as a result of The occurrence of any Event of Default, Any information produced or approved by the Borrower being or being alleged to be misleading and/or deceptive in any respect, Any enquiry, investigation, subpoena (or similar order) or litigation with respect to the Borrower or with respect to the transactions contemplated or financed under this Agreement.              ' + '\n\n' +
+        '23. If at any time any provision of this Agreement becomes illegal, invalid or unenforceable in any respect, neither the legality nor the validity or enforceability of the remaining provisions of this Agreement shall in any way be affected or impaired thereby.                                  ' + '\n\n' +
+        '24. This Agreement and the other documents attached hereto or referred to herein integrate all the terms and conditions mentioned herein and/ or incidental hereto and supersede all oral negotiations and prior writings in respect of the subject matter hereof. In the event of any conflict between the terms, conditions and provisions of this Agreement and any agreement or documents attached hereto or referred to herein, then in such event, the terms, conditions and provisions of this Agreement shall prevail.                 ' + '\n\n' +
+        '25. The Borrower shall bear, pay and reimburse to the Lender all costs (including stamp duty), charges and expenses of the Lender in connection with the execution of loan agreement of the Lender, and all other documents and all costs, charges or expenses which the Lender shall certify as having sustained or incurred by it as a consequence of occurrence of an Event of Default including all costs, charges and expenses of the legal advisers of the Lender. All such sums shall be reimbursed by the Borrower to the Lender within a period of 7 (Seven) days from the date of notice of demand from the Lender and shall be debited to the Loan account and shall carry interest at the same rate as payable on the Loan from the date of payment till reimbursement.      ' + '\n\n' +
+        '26. Every notice, request, demand or other communication to be given by one party to the other under this Agreement shall:                      ' + '\n\n' +
+        '1. be through WhatsApp using accounts registered with Service Provider      ' + '\n\n' +
+        '2. be through email using accounts registered with the Service Provider     ' + '\n\n' + 'OR' + '\n\n' +
+        '3. be in writing delivered personally or by registered post;                 ' + '\n\n' +
+        '4. be deemed to have been received when delivered personally, at the time so delivered and if given by registered post, 48 hours after it has been put into post;                                                          ' + '\n\n' +
+        '4. be sent to the Borrower and the Lender at their addresses first hereinabove mentioned or to such other address as either party may in writing hereafter notify to the other party                                         ' + '\n\n' + '27. In case of any query or grievance related to these T&C you may contact ' + company + ' at customercare@' + s[:13] + '.com             ')
+
+    p.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+
+    document.add_page_break()
+    document.save(wordname + '.docx')
+
+
+def agreement_generator(record, file_loc):
+    # WORD CONVERT
+    wordcon(record, file_loc)
+    # WORD TO PDF
+    pdf_linux(file_loc)
+    generate_footer(record, file_loc)
+    # # ADD FOOTER
+    merge_pdf(file_loc, file_loc + '.pdf')
+    os.remove(file_loc+'.docx')
+    os.remove(file_loc+'_footer.pdf')
+
