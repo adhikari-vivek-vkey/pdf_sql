@@ -1,0 +1,175 @@
+#hello
+import mysql.connector as my
+import re
+import os
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfFileWriter
+from datetime import datetime
+import calendar 
+
+db = my.connect(host="40.112.165.130", database="credicxodb", user="anandesh", password="rock0004")
+# db = my.connect(host="localhost", database="cashpersonal", user="anandesh", password="Rock0004@")
+
+cur = db.cursor()
+a = []
+b = []
+c = []
+filter_data = []
+nor_data = []
+nor_date = []
+
+  
+def findDay(date): 
+    week = datetime.strptime(date, '%Y-%m-%d').weekday()
+    cal = (calendar.day_name[week]) 
+    return (cal[:3])
+
+def search_file():
+    for data_filter in filter_data:
+        if data_filter == team:
+            
+
+
+            return True
+    return False
+def da_list():
+    for date_nor in nor_date:
+        datetime_sett = Date_Regex.search(date_nor).group()
+        print(str(datetime_sett)+str(list_t))
+        if list_t == datetime_sett:
+            ddd = findDay(list_t)
+            ch_list = datetime.strptime(date_nor, '%Y-%m-%d %H:%M:%S').strftime(str(ddd)+' %b %d %H:%M:%S IST %Y')
+            return ch_list
+
+def generate_footer(footer):
+    width, height = letter
+
+    can = canvas.Canvas('footer.pdf', pagesize=letter)
+
+    y = 0.20
+    for i, j in footer.items():
+        can.setFont("Helvetica", 8)
+        can.drawString(0.198 * width, y * height, text=str(i) + str(j))
+        y -= 0.01
+    can.save()
+
+def merge_pdf(target_pdf, convert, footer='footer.pdf'):
+
+    v = os.path.abspath(target_pdf)
+    target_pdf = PdfFileReader(v)
+    pdf_writer = PdfFileWriter()
+    if footer is not None:
+        footer_page = PdfFileReader(footer).getPage(0)
+
+    for page in range(target_pdf.getNumPages()):
+        current_page = target_pdf.getPage(page)
+        if footer is not None:
+            if target_pdf.getNumPages()-1 == page:
+                current_page.mergePage(footer_page)
+            else:
+                pass
+        pdf_writer.addPage(current_page)
+
+    with open(convert, 'wb') as pdf:
+        pdf_writer.write(pdf)
+
+try:
+    sql = "SELECT cust_id FROM `users_loan_agreement_signs` WHERE `created_at` <= '2019-11-28 11:00:00'"
+    cur.execute(sql)
+    res = cur.fetchall()
+    for i in res:
+        a.append(i[0])
+    list_data = list(dict.fromkeys(a))
+    print(list_data)
+    list_data = ['5494','38169','50502']
+    for j in list_data:
+        file = os.getcwd() + '/' + str(j)
+        files_path = [str(file)+'/'+x for x in os.listdir(str(file))]
+        Date_Regex = re.compile(r'\d\d\d\d-\d\d-\d\d')
+        Date_Reg = re.compile(r'\d\d-\d\d-\d\d\d\d')
+        print(files_path)
+        for f in files_path:
+            if f.endswith(".pdf"):
+                try:
+                    if Date_Reg.search(f).group() is not None:
+                        nor_data.append(f)
+                        datetime_s = Date_Reg.search(f).group()
+                        print(str(datetime_s)+'datetime_s')
+                        datetime_object = datetime.strptime(datetime_s, '%d-%m-%Y').date()
+                        print(str(datetime_object)+'datetime_object')
+                        aa = str(datetime_object)
+                        filter_data.append(aa)
+                except Exception as e:
+                    print(e)
+        sql = "SELECT sign_date FROM users_loan_agreement_signs WHERE cust_id LIKE "+str(j)
+        cur.execute(sql)
+        date_re = cur.fetchall()
+        for d in date_re:
+            nor_date.append(d[0])
+            date = Date_Regex.search(d[0]).group()
+            b.append(date)
+        nor_date = ['2019-11-22 15:07:30','2019-11-21 15:17:30']
+        b = ['2019-09-28', '2019-11-21','2019-09-28', '2019-09-24', '2019-11-22', '2019-09-24','2019-09-24']
+        if b is not None:
+            data_set = []
+            try:
+                for team in [ele for ind, ele in enumerate(b,1) if ele not in b[ind:]]:
+                    if b.count(team) >= 2:
+                        f = open("double_pdf_found.txt", "a+")
+                        print('CUSTOME ID :- '+str(j))
+                        print(' DATE:-  '+ str(team))
+                        print(' no of loans:-  '+ str(b.count(team)))
+                        if search_file():
+                            exist = 'Yes'
+                        else:
+                            exist = 'No'
+
+                        f.write("Custome id:-  {}, Date of issue:-  {} No of Loans:- {} and File exist or no:- {} \n".format(j,team,b.count(team),exist))
+                    else:
+                        data_set.append(str(team))
+
+                t_set = set(data_set) & set(filter_data)
+                t_list = list(t_set)
+                for not_mat in t_list:
+                    for dd in data_set:
+                        if dd == not_mat:
+                            data_set.remove(dd)
+                if t_list != []:
+                    for list_t in t_list:
+                        name_sql = "SELECT users_name, users_city  FROM `users_personal_infos` WHERE `cust_id` LIKE "+ str(j)
+                        cur.execute(name_sql)
+                        result_name = cur.fetchall()
+
+                        footer = {
+                            "Digitally Signed by: ": "",
+                            'Name: ': str(result_name[0][0]).capitalize(),
+                            'Location: ': str(result_name[0][1]).capitalize(),
+                            "Reason: ": 'Loan Agreement',
+                            'Date: ': da_list(),
+                        }
+                        # ADD FOOTER
+                        for data_nor in nor_data:
+                            ch_list = datetime.strptime(list_t, '%Y-%m-%d').strftime('%d-%m-%Y')
+                            datet = Date_Reg.search(data_nor).group()
+                            if datet == ch_list:
+                                generate_footer(footer)
+                                merge_pdf(data_nor,data_nor)
+
+                if data_set != []:
+                    for set_data in data_set:
+                        f = open("double_pdf_found.txt", "a+")
+                        f.write("Custome id:-  {}, Date of issue:-  {} No of Loans:- 1 and File exixt or no:- No \n".format(j, set_data))
+
+            except Exception as e:
+                print(e)
+
+        b= []
+        data_set = []
+        filter_data = []
+        nor_data = []
+        nor_date = []
+
+except Exception as e:
+    print(e)
