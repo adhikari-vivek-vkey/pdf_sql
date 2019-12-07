@@ -1,47 +1,373 @@
-#hello
+#all added footer
+
 import mysql.connector as my
-import re
 import os
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from PyPDF2 import PdfFileReader
 from PyPDF2 import PdfFileWriter
-from datetime import datetime
-import calendar 
+import re
+# from pathlib import Path
+import datetime
 
 db = my.connect(host="40.112.165.130", database="credicxodb", user="anandesh", password="rock0004")
-# db = my.connect(host="localhost", database="cashpersonal", user="anandesh", password="Rock0004@")
-
 cur = db.cursor()
-a = []
-b = []
-c = []
-filter_data = []
-nor_data = []
-nor_date = []
+sql = "SELECT cust_id,sign_date FROM users_loan_agreement_signs"
+name = "SELECT users_name FROM users_personal_infos"
 
-  
-def findDay(date): 
-    week = datetime.strptime(date, '%Y-%m-%d').weekday()
-    cal = (calendar.day_name[week]) 
-    return (cal[:3])
+try:
+    cur.execute(sql)
+    results = cur.fetchall()
+    print(results)
 
-def search_file():
-    for data_filter in filter_data:
-        if data_filter == team:
-            
+except Exception as e:
+    print(e)
 
+#Create Footer
+def generate_footer(footer):
+    width, height = letter
 
+    can = canvas.Canvas('footer.pdf', pagesize=letter)
+
+    y = 0.20
+    for i, j in footer.items():
+        can.setFont("Helvetica", 8)
+        can.drawString(0.198 * width, y * height, text=str(i) + str(j))
+        y -= 0.01
+    can.save()
+
+#Add Footer
+def merge_pdf(target_pdf, convert, footer='footer.pdf'):
+
+    v = os.path.abspath(target_pdf)
+    target_pdf = PdfFileReader(v)
+    pdf_writer = PdfFileWriter()
+    if footer is not None:
+        footer_page = PdfFileReader(footer).getPage(0)
+
+    for page in range(target_pdf.getNumPages()):
+        current_page = target_pdf.getPage(page)
+        if footer is not None:
+            if target_pdf.getNumPages()-1 == page:
+                current_page.mergePage(footer_page)
+            else:
+                pass
+        pdf_writer.addPage(current_page)
+
+    with open(convert, 'wb') as pdf:
+        pdf_writer.write(pdf)
+
+#List all dir
+list = ['0007','5494','38169','50502']
+b = [] #append File
+# count = 0
+# new_list = []
+
+# cc = 0
+# pos = -1
+# i = 1
+
+#Search PDF file match or not
+def search(c,x,s):
+    for z in range(len(b)-s):
+        n = Date_Regex.search(b[c]).group()
+        v = Date_Regex.search(b[x]).group()
+        if v == n:
+            del b[x]
             return True
+        x += 1
     return False
-def da_list():
-    for date_nor in nor_date:
-        datetime_sett = Date_Regex.search(date_nor).group()
-        print(str(datetime_sett)+str(list_t))
-        if list_t == datetime_sett:
-            ddd = findDay(list_t)
-            ch_list = datetime.strptime(date_nor, '%Y-%m-%d %H:%M:%S').strftime(str(ddd)+' %b %d %H:%M:%S IST %Y')
-            return ch_list
+
+#Search all List in pdf and append
+for i in list:
+    file = os.getcwd() + '/' + str(i)
+    files_path = [str(file)+'/'+x for x in os.listdir(str(file))]
+    Date_Regex = re.compile(r'\d\d-\d\d-\d\d\d\d')
+    for f in files_path:
+        if f.endswith(".pdf"):
+            try:
+                if Date_Regex.search(f).group() is not None:
+                    b.append(f)
+            except Exception as e:
+                print(e)
+    print(b)
+    #create New file
+    if b is not None:
+        x = 1
+        c = 0
+        s = 1
+        for b_data in range(len(b)):
+            try:
+                if search(c,x,s):
+                    #if Find same file in Dir
+                    print((b[b_data]+'footer same'))
+                    f = open("double_pdf_found.txt", "a+")
+                    f.write(str(b[b_data])+'\n')
+                    print("same data found" + str(b[b_data]))
+                    c+=1
+                    x+=1
+                    s+=1
+                else:
+                    #if Not
+                    footer = {
+                        "Digitally Signed by:": "",
+                        'Name:': 'Sanjeev Kumar Jha',
+                        'Location:': 'south west delhi',
+                        "Reason:": 'Loan Agreement',
+                        # 'IMEI: ': 'IMEI',  2019-11-06
+                        # 'IP Address: ': 'IP',
+                        'Date:': 'Thu Nov 14 16:32:00 IST 2019',#datetime.datetime.now().strftime('%Y-%d-%M %H:%M:%S'),
+                    }
+
+                    # ADD FOOTER
+                    generate_footer(footer)
+                    merge_pdf(b[b_data],b[b_data])
+                    c+=1
+                    x+=1
+                    s+=1
+            except Exception as e:
+                print(e)
+    b= [] #New var
+
+
+###############################################################################
+### date.py
+
+import mysql.connector as my
+db = my.connect(host="40.112.165.130", database="credicxodb", user="anandesh", password="rock0004")
+# db = my.connect(host="localhost", database="cashpersonal", user="anandesh", password="Rock0004@")
+cur = db.cursor()
+# sql = "SELECT cust_id FROM `users_loan_agreement_signs` WHERE `created_at` <= '2019-11-28 11:00:00'"
+j = 5494
+n_date = '2019-09-28 15:01:43'
+
+            #
+            #
+            # t_split = t_t.split('/')[-1]
+            # t_date ="SELECT id  FROM `user_call_status` WHERE `cust_id` LIKE "+ str(j)+ " AND fb_user_id LIKE '" +str(n_date[nn]) +"'"
+            # cur.execute(t_date)
+            # rest = cur.fetchall()
+            # print(rest[0][0])
+            # update_file = "UPDATE `user_call_status` SET `user_phone` = '" + str(t_split) + "' WHERE `user_call_status`.`id` = " + str(rest[0][0]);
+            # cur.execute(update)
+            # db.commit()
+            # print(cur.rowcount, "record(s) affected")
+
+
+
+
+
+
+
+sql = "SELECT id  FROM `user_call_status` WHERE `cust_id` LIKE "+ str(j)+ " AND fb_user_id LIKE '" +str(n_date) +"'"
+print(sql)
+# sql = "SELECT users_name, users_city  FROM `users_personal_infos` WHERE `cust_id` LIKE '5494'"#+ str(j)
+cur.execute(sql)
+res = cur.fetchall()
+print(str(res)+'list')
+print(res[0][0])
+update = "UPDATE `user_call_status` SET `user_phone` = '43434222222.pdf' WHERE `user_call_status`.`id` = " + str(res[0][0]);
+cur.execute(update)
+db.commit()
+print(cur.rowcount, "record(s) affected")
+
+from _datetime import datetime
+list_t = '2019-03-03'
+change_pa = datetime.strptime(list_t, '%Y-%m-%d').strftime('%d-%m-%Y')
+print(change_pa)
+
+aaa = '/home/credicxo/PycharmProjects/Project1/5494/5494_21-11-2019_LOAN_AGREEMENT.pdf'
+b = aaa.split('/')
+print(b)
+# b = aaa.split('/')
+# print(b)
+# print(str(b[-1])+'last')
+
+
+a = '2019-11-22 15:01:30'
+
+
+
+b = ['2019-11-22 15:01:30','2019-11-22 15:07:30','2019-11-22 15:07:31','2019-11-22 15:07:10']
+for i in b:
+	if i == a:
+		print(i)
+
+# mysql> insert into InsertMultipleDemo(UserRole) values('Admin'),('Author'),('Driver'),('Guest');
+
+
+# INSERT INTO `user_call_status` (`id`, `cust_id`, `fb_user_id`, `user_phone`, `days_remain`, `phone_picked`) VALUES (NULL, '5555', '', '', '', '');
+# UPDATE `user_call_status` SET `cust_id` = '555' WHERE `user_call_status`.`id` = 2;
+
+# UPDATE `user_call_status` SET `user_phone` = '43434222222' WHERE `user_call_status`.`id` = 4;
+# SELECT id,sign_date FROM `users_loan_agreement_signs` WHERE cust_id LIKE '5494'
+
+# SELECT *  FROM `users_loan_agreement_signs` WHERE `cust_id` LIKE '5494' AND `sign_date` LIKE '2019-09-28 15:01:43'
+
+
+
+
+                    # if Date_Reg.search(f_path).group() is not None:
+                    #     n_data.append(f_path)
+                    #     datetime_s = Date_Reg.search(f_path).group()
+                    #     datetime_object = datetime.strptime(datetime_s, '%d-%m-%Y').date()
+                    #     aa = str(datetime_object)
+                    #     fil_ter.append(aa)
+
+
+
+
+
+                    # List files and directories 
+                    # in "/home / User / Documents" 
+                    # print("After copying file:") 
+                    # print(os.listdir(path)) 
+                    # Print path of newly 
+                    # created file 
+                    # print("Destination path:", dest) 
+                # datet = Date_Reg.search(data_nor).group()
+                # print(datet)
+                # if datet == ch_l
+
+
+                        # name_sql_qu = "SELECT users_name, users_city  FROM `users_personal_infos` WHERE `cust_id` LIKE "+ str(j)
+                        # cur.execute(name_sql_qu)
+                        # result_na = cur.fetchall()
+                        # footer = {
+                        #     "Digitally Signed by: ": "",
+                        #     'Name: ': str(result_na[0][0]).capitalize(),
+                        #     'Location: ': str(result_na[0][1]).capitalize(),
+                        #     "Reason: ": 'Loan Agreement',
+                        #     'Date: ': da_list(),
+                        # }
+                        # ADD FOOTER
+                        # print(nor_data)
+                        # for data_nor in nor_data:
+                        # ch_list = datetime.strptime(list_t, '%Y-%m-%d').strftime('%d-%m-%Y')
+                        # datet = Date_Reg.search(data_nor).group()
+                        # if datet == ch_list:
+                        #     generate_footer(footer)
+                        #     merge_pdf(data_nor,data_nor)
+
+                        # if t_list != []:
+                        # print(t_list)
+                        # for list_t in t_list:
+
+
+
+# files_to_rename = [fname in os.listdir(my_dir) if not (fname.startswith('Copy') or fname.startswith('SxDI'))]
+
+# for fname in files_to_rename:
+    # os.rename(fname, "Q3" + fname")
+import os
+import shutil  
+path = '/home/credicxo/PycharmProjects/Project1'
+
+# List files and directories 
+# in '/home/User/Documents' 
+print("Before copying file:") 
+print(os.listdir(path)) 
+
+
+# Source path 
+source = "/home/credicxo/PycharmProjects/Project1/word.py"
+
+# Destination path 
+destination = "/home/credicxo/PycharmProjects/Project1/vkey1.pdf"
+
+# Copy the content of 
+# source to destination 
+dest = shutil.copyfile(source, destination) 
+
+# List files and directories 
+# in "/home / User / Documents" 
+print("After copying file:") 
+print(os.listdir(path)) 
+
+# Print path of newly 
+# created file 
+print("Destination path:", dest) 
+
+text = 'home/credicxo/PycharmProjects/Project1/5494/5494_21-11-2019_LOAN_AGREEMENT.pdf'
+
+# print(aa[:])
+
+# text = 'Python: Cut of the last word of a sentence?'
+a = text.rsplit(' ', 1)[0]
+print(str(a)+'a')
+
+# 'Python: Cut of the last word of a'
+a = ' '.join(text.split('.pdf')[:-1])
+print(str(a)+'a')
+from collections import OrderedDict
+a = ['/home/credicxo/PycharmProjects/Project1/5494/5494_21-11-2019_LOAN_AGREEMENT.pdf', '/home/credicxo/PycharmProjects/Project1/5494/5494_28-09-2019_LOAN_AGREEMENT.pdf', '/home/credicxo/PycharmProjects/Project1/5494/5494_28-09-2019_LOAN_AGREEMENT1.pdf', '/home/credicxo/PycharmProjects/Project1/5494/5494_28-09-2019_LOAN_AGREEMENT2.pdf']
+# a = a.sort()
+print(a)
+
+# import boto3
+# import botocore
+# /home/ec2-user
+
+# # host = '52.xx.xx.xx'
+# # localhost = '127.0.0.1'
+# # ssh_username = 'ubuntu'
+# # ssh_private_key = '/path/to/key.pem'
+
+# # Note (Example is valid for Python v2 and v3)
+# from __future__ import print_function
+
+# import sys
+
+#sys.path.insert(0, 'python{0}/'.format(sys.version_info[0]))
+
+
+# import mysql.connector
+# from mysql.connector.constants import ClientFlag
+
+# config = {
+#     'user': 'root',
+#     'password': 'password',
+#     'host': '13.235.188.119',
+#     'client_flags': [ClientFlag.SSL],
+#     'ssl_ca': 'home/credicxo/PycharmProjects/Project1/server.pem',
+#     # 'ssl_cert': '/opt/mysql/ssl/client-cert.pem',
+#     # 'ssl_key': '/opt/mysql/ssl/client-key.pem',
+# }
+
+# cnx = mysql.connector.connect(**config)
+# cur = cnx.cursor(buffered=True)
+# cur.execute("SHOW STATUS LIKE 'Ssl_cipher'")
+# print(cur.fetchone())
+# cur.close()
+# cnx.close()
+
+
+
+#################################################################
+
+#short text 
+
+
+import mysql.connector as my
+import os
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfFileWriter
+import re
+from pathlib import Path
+import datetime
+
+db = my.connect(host="40.112.165.130", database="credicxodb", user="anandesh", password="rock0004")
+cur = db.cursor()
+sql = sql = "SELECT cust_id FROM users_loan_agreement_signs" #WHERE cust_id LIKE 5494"
+
+try:
+    cur.execute(sql)
+    results = cur.fetchall()
+except Exception as e:
+    print(e)
+
 
 def generate_footer(footer):
     width, height = letter
@@ -54,6 +380,7 @@ def generate_footer(footer):
         can.drawString(0.198 * width, y * height, text=str(i) + str(j))
         y -= 0.01
     can.save()
+
 
 def merge_pdf(target_pdf, convert, footer='footer.pdf'):
 
@@ -75,101 +402,324 @@ def merge_pdf(target_pdf, convert, footer='footer.pdf'):
     with open(convert, 'wb') as pdf:
         pdf_writer.write(pdf)
 
-try:
-    sql = "SELECT cust_id FROM `users_loan_agreement_signs` WHERE `created_at` <= '2019-11-28 11:00:00'"
-    cur.execute(sql)
-    res = cur.fetchall()
-    for i in res:
-        a.append(i[0])
-    list_data = list(dict.fromkeys(a))
-    print(list_data)
-    list_data = ['5494','38169','50502']
-    for j in list_data:
-        file = os.getcwd() + '/' + str(j)
-        files_path = [str(file)+'/'+x for x in os.listdir(str(file))]
-        Date_Regex = re.compile(r'\d\d\d\d-\d\d-\d\d')
-        Date_Reg = re.compile(r'\d\d-\d\d-\d\d\d\d')
-        print(files_path)
-        for f in files_path:
-            if f.endswith(".pdf"):
-                try:
-                    if Date_Reg.search(f).group() is not None:
-                        nor_data.append(f)
-                        datetime_s = Date_Reg.search(f).group()
-                        print(str(datetime_s)+'datetime_s')
-                        datetime_object = datetime.strptime(datetime_s, '%d-%m-%Y').date()
-                        print(str(datetime_object)+'datetime_object')
-                        aa = str(datetime_object)
-                        filter_data.append(aa)
-                except Exception as e:
-                    print(e)
-        sql = "SELECT sign_date FROM users_loan_agreement_signs WHERE cust_id LIKE "+str(j)
-        cur.execute(sql)
-        date_re = cur.fetchall()
-        for d in date_re:
-            nor_date.append(d[0])
-            date = Date_Regex.search(d[0]).group()
-            b.append(date)
-        nor_date = ['2019-11-22 15:07:30','2019-11-21 15:17:30']
-        b = ['2019-09-28', '2019-11-21','2019-09-28', '2019-09-24', '2019-11-22', '2019-09-24','2019-09-24']
-        if b is not None:
-            data_set = []
+
+list = [('0007,'[1,2,3,4]),'5494','38169','50502']
+b = []
+count = 0
+new_list = []
+
+cc = 0
+pos = -1
+i = 1
+def search(c,x,s):
+    for z in range(len(b)-s):
+        n = Date_Regex.search(b[c]).group()
+        v = Date_Regex.search(b[x]).group()
+        if v == n:
+            # del b[n]
+            del b[x]
+            return True
+        x += 1
+    return False
+
+
+
+
+
+for i in list:
+    file = os.getcwd() + '/' + str(i)
+    files_path = [str(file)+'/'+x for x in os.listdir(str(file))]
+    Date_Regex = re.compile(r'\d\d-\d\d-\d\d\d\d')
+    for f in files_path:
+        if f.endswith(".pdf"):
             try:
-                for team in [ele for ind, ele in enumerate(b,1) if ele not in b[ind:]]:
-                    if b.count(team) >= 2:
-                        f = open("double_pdf_found.txt", "a+")
-                        print('CUSTOME ID :- '+str(j))
-                        print(' DATE:-  '+ str(team))
-                        print(' no of loans:-  '+ str(b.count(team)))
-                        if search_file():
-                            exist = 'Yes'
-                        else:
-                            exist = 'No'
-
-                        f.write("Custome id:-  {}, Date of issue:-  {} No of Loans:- {} and File exist or no:- {} \n".format(j,team,b.count(team),exist))
-                    else:
-                        data_set.append(str(team))
-
-                t_set = set(data_set) & set(filter_data)
-                t_list = list(t_set)
-                for not_mat in t_list:
-                    for dd in data_set:
-                        if dd == not_mat:
-                            data_set.remove(dd)
-                if t_list != []:
-                    for list_t in t_list:
-                        name_sql = "SELECT users_name, users_city  FROM `users_personal_infos` WHERE `cust_id` LIKE "+ str(j)
-                        cur.execute(name_sql)
-                        result_name = cur.fetchall()
-
-                        footer = {
-                            "Digitally Signed by: ": "",
-                            'Name: ': str(result_name[0][0]).capitalize(),
-                            'Location: ': str(result_name[0][1]).capitalize(),
-                            "Reason: ": 'Loan Agreement',
-                            'Date: ': da_list(),
-                        }
-                        # ADD FOOTER
-                        for data_nor in nor_data:
-                            ch_list = datetime.strptime(list_t, '%Y-%m-%d').strftime('%d-%m-%Y')
-                            datet = Date_Reg.search(data_nor).group()
-                            if datet == ch_list:
-                                generate_footer(footer)
-                                merge_pdf(data_nor,data_nor)
-
-                if data_set != []:
-                    for set_data in data_set:
-                        f = open("double_pdf_found.txt", "a+")
-                        f.write("Custome id:-  {}, Date of issue:-  {} No of Loans:- 1 and File exixt or no:- No \n".format(j, set_data))
-
+                if Date_Regex.search(f).group() is not None:
+                    b.append(f)
             except Exception as e:
                 print(e)
+    print(b)
+    if b is not None:
+        x = 1
+        c = 0
+        s = 1
+        for b_data in range(len(b)):
+            try:
+                if search(c,x,s):
+                    print((b[b_data]+'footer same'))
+                    f = open("double_pdf_found.txt", "a+")
+                    f.write(str(b[b_data])+'\n')
+                    print("same data found" + str(b[b_data]))
+                    c+=1
+                    x+=1
+                    s+=1
+                else:
+                    footer = {
+                        "Digitally Signed by:": "",
+                        'Name:': 'Sanjeev Kumar Jha',
+                        'Location:': 'south west delhi',
+                        "Reason:": 'Loan Agreement',
+                        # 'IMEI: ': 'IMEI',  2019-11-06
+                        # 'IP Address: ': 'IP',
+                        'Date:': 'Thu Nov 14 16:32:00 IST 2019',#datetime.datetime.now().strftime('%Y-%d-%M %H:%M:%S'),
+                    }
 
-        b= []
-        data_set = []
-        filter_data = []
-        nor_data = []
-        nor_date = []
+                    # ADD FOOTER
+                    generate_footer(footer)
+                    merge_pdf(b[b_data],b[b_data])
+                    c+=1
+                    x+=1
+                    s+=1
+            except Exception as e:
+                print(e)
+    b= []
 
+
+############################################################
+word.py
+
+
+
+
+
+
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4, letter
+from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfFileWriter
+from pathlib import Path
+import os
+import datetime
+def generate_footer():
+    width, height = letter
+
+    can = canvas.Canvas('footer.pdf', pagesize=letter)
+    table = {
+        "Signed By: ": "BORROWER'S NAME:",
+        'Reason: ': 'Avaling loan',
+        'Signed using ': 'Signed',
+        "Device ID: ": '30 Apr',
+        'IMEI: ': 'IMEI',
+        'IP Address: ': 'IP',
+        'Timestamp: ': datetime.datetime.now().strftime('%Y-%d-%M %H:%M:%S'),
+    }
+    y = 0.07
+    # a = 0
+    for i, j in table.items():
+        can.setFont("Helvetica", 6)
+        can.drawString(0.075*width, y*height, text=str(i)+str(j))
+        y -=0.01
+
+        print(y)
+    can.save()
+
+def merge_pdf(target_pdf, footer='footer.pdf'):
+    v = os.path.abspath(target_pdf)
+    print(v)
+    target_pdf = PdfFileReader(v)
+
+    pdf_writer = PdfFileWriter()
+
+    if footer is not None:
+        footer_page = PdfFileReader(footer).getPage(0)
+
+    for page in range(target_pdf.getNumPages()):
+        print(target_pdf.getNumPages())
+        current_page = target_pdf.getPage(page)
+        if footer is not None:
+            current_page.mergePage(footer_page)
+
+        # if page == target_pdf.getNumPages():
+        pdf_writer.addPage(current_page)
+        # else:
+            # pdf_writer.addPage()
+
+    with open('merged.pdf', 'wb') as pdf:
+        pdf_writer.write(pdf)
+
+
+
+if __name__ == "__main__":
+    base_dir = '.'
+    for doc_file in Path(base_dir).glob('*.docx?'):
+        # word3pdf(str(doc_file))
+    #FOOTER ADD IN PDF
+        print(doc_file+'hekk')
+        # generate_footer()
+        # merge_pdf(doc_file)
+
+    generate_footer()
+
+    merge_pdf('vivek.pdf')
+
+################################################
+test 
+
+import mysql.connector as my
+import os
+import datetime
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4, letter
+from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfFileWriter
+import re
+from pathlib import Path
+
+db = my.connect(host="13.126.31.40", database="30oct", user="interndb", password="interndb@1!#")
+cur = db.cursor()
+sql = "SELECT cust_id FROM users_loan_agreement_signs"
+
+try:
+    cur.execute(sql)
+    results = cur.fetchall()
 except Exception as e:
     print(e)
+
+
+def generate_footer(footer):
+    width, height = letter
+
+    can = canvas.Canvas('footer.pdf', pagesize=letter)
+
+    y = 0.20
+    for i, j in footer.items():
+        can.setFont("Helvetica", 8)
+        can.drawString(0.198 * width, y * height, text=str(i) + str(j))
+        y -= 0.01
+    can.save()
+
+
+def merge_pdf(target_pdf,convert,footer='footer.pdf'):
+
+    v = os.path.abspath(target_pdf)
+    target_pdf = PdfFileReader(v)
+    pdf_writer = PdfFileWriter()
+    if footer is not None:
+        footer_page = PdfFileReader(footer).getPage(0)
+
+    for page in range(target_pdf.getNumPages()):
+        print(target_pdf.getNumPages())
+        current_page = target_pdf.getPage(page)
+        if footer is not None:
+            if target_pdf.getNumPages()-1 == page:
+                current_page.mergePage(footer_page)
+            else:
+                pass
+        pdf_writer.addPage(current_page)
+
+    with open(convert, 'wb') as pdf:
+        pdf_writer.write(pdf)
+
+
+list = [38169]
+b = []
+
+
+for i in list:
+    file = os.getcwd() +'/'+str(i)
+    files_path = [str(file)+'/'+x for x in os.listdir(str(file))]
+    try:
+        for file in files_path:
+            if file.endswith(".pdf"):
+                b.append(file)
+                print("IN DIRECTORY PDF FILES: "+str(file))
+
+        Date_Regex = re.compile(r'\d\d-\d\d-\d\d\d\d')
+        count = 0
+        c = []
+        for z in range(len(b)):
+            try:
+                if Date_Regex.search(b[count]).group() is not None:
+                    print('hello')
+                    c.append(b[count])
+            except Exception as e:
+                print(e)
+            count += 1
+        count = 0
+        for c_data in range(len(c)):
+            if Date_Regex.search(c[count]).group() == Date_Regex.search(c[count+1]).group():
+                f = open("double_pdf.txt", "w+")
+                f.write(str(c[c_data]))
+                print("same data found"+str(c[c_data]))
+            else:
+                footer = {
+                    "Digitally Signed by:": "",
+                    'Name:': 'Sanjeev Kumar Jha',
+                    'Location:': 'south west delhi',
+                    "Reason:": 'Loan Agreement',
+                    # 'IMEI: ': 'IMEI',  2019-11-06
+                    # 'IP Address: ': 'IP',
+                    'Date:': 'Thu Nov 14 16:32:00 IST 2019',#datetime.datetime.now().strftime('%Y-%d-%M %H:%M:%S'),
+                }
+
+                # ADD FOOTER
+                print(c[c_data]+'footer run')
+                generate_footer(footer)
+                merge_pdf(c[c_data],c[c_data])
+    except Exception as e:
+        print(e)
+
+
+print(c)
+# pos = -1
+#
+# def search(list, n):
+#
+#     l = 0
+#     u = len(list)-1
+#
+#     while l <= u:
+#         mid = (l+u) // 2
+#
+#         if list[mid] == n:
+#             globals()['pos'] = mid
+#             return True
+#         else:
+#             if list[mid] < n:
+#                 l = mid+1;
+#             else:
+#                 u = mid-1;
+#
+#     return False
+# # list = [4,7,8,12,45,99,102,702,10987,56666]
+# n = '30-10-2019'
+#
+# if search(b, n):
+#     print("Found at ",pos+1)
+# else:
+#     print("Not Found")
+
+
+###########################################################
+extra
+
+# list = [('38168',),('5494',),('50502',)]
+import re
+list = ['/home/credicxo/PycharmProjects/Project0/0007/36169_30-10-2019_LOAN_AGREEMENT.pdf', '/home/credicxo/PycharmProjects/Project2/0007/36169_13-11-2019_LOAN_AGREEMENT.pdf','/home/credicxo/PycharmProjects/Project1/0007/36169_30-10-2019_LOAN_AGREEMENT.pdf']
+# list = []
+list.sort()
+print(list)
+s = 0
+Date_Regex = re.compile(r'\d\d-\d\d-\d\d\d\d')
+def search(c):
+    n = Date_Regex.search(list[c]).group()
+    x = 0
+    try:
+        for z in range(len(list)-s):
+            v = Date_Regex.search(list[x]).group()
+            if v == n:
+                return True
+            x += 0
+        x += 0
+        return False
+    except Exception as e:
+        print(e)
+if list is not None:
+    c = -1
+    s = 0
+    for b_data in range(len(list)):
+        # for data in range(len(list-))
+        if search(c):
+            print('found')
+        else:
+            print('hello')
+        c+=0
