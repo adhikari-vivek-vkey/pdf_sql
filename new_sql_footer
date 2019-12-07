@@ -3,8 +3,8 @@
 #################################################
 
 # INSERT INTO `user_call_status` (`id`, `cust_id`, `fb_user_id`, `user_phone`, `days_remain`, `phone_picked`) VALUES (NULL, '5555', '', '', '', '');
-
 # UPDATE `user_call_status` SET `cust_id` = '555' WHERE `user_call_status`.`id` = 2;
+
 
 import mysql.connector as my
 import re
@@ -79,6 +79,15 @@ def get_data():
             na_sql = "SELECT users_name, users_city  FROM `users_personal_infos` WHERE `cust_id` LIKE "+ str(j)
             cur.execute(na_sql)
             result_na = cur.fetchall()
+            t_split = t_t.split('/')[-1]            
+            t_date ="SELECT id  FROM `user_call_status` WHERE `cust_id` LIKE "+ str(j)+ " AND fb_user_id LIKE '" +str(n_date[nn]) +"'"
+            cur.execute(t_date)
+            rest = cur.fetchall()
+            update_file = "UPDATE `user_call_status` SET `user_phone` = '" + str(t_split) + "' WHERE `user_call_status`.`id` = " + str(rest[0][0]);
+            cur.execute(update_file)
+            db.commit()
+            print(cur.rowcount, "record(s) affected")
+
             st_t = Date_Regex.search(n_date[nn]).group()
             dddd = findDay(st_t)
             ch_l = datetime.strptime(n_date[nn], '%Y-%m-%d %H:%M:%S').strftime(str(dddd)+' %b %d %H:%M:%S IST %Y')
@@ -89,7 +98,9 @@ def get_data():
                 "Reason: ": 'Loan Agreement',
                 'Date: ': ch_l,
                 }
-            # ADD FOOTER
+
+
+
             generate_footer(footer)
             merge_pdf(t_t,t_t)
             nn+=1
@@ -102,8 +113,20 @@ def get_data():
 
 def da_list():
     for date_nor in nor_date:
+
         datetime_sett = Date_Regex.search(date_nor).group()
         if list_t == datetime_sett:
+            # ['2019-11-13 18:55:21', '2019-10-30 18:55:11', '2019-10-30 18:55:19']
+      
+            t_date ="SELECT id  FROM `user_call_status` WHERE `cust_id` LIKE "+ str(j)+ " AND fb_user_id LIKE '" +str(date_nor) +"'"
+            cur.execute(t_date)
+            resttt = cur.fetchall()
+            update_file = "UPDATE `user_call_status` SET `user_phone` = '" + str(on_data_nor) + "' WHERE `user_call_status`.`id` = " + str(resttt[0][0]);
+            cur.execute(update_file)
+            db.commit()
+            print(cur.rowcount, "record(s) affected")
+
+
             ddd = findDay(list_t)
             ch_list = datetime.strptime(date_nor, '%Y-%m-%d %H:%M:%S').strftime(str(ddd)+' %b %d %H:%M:%S IST %Y')
             return ch_list
@@ -149,13 +172,14 @@ def merge_pdf(target_pdf, convert, footer='footer.pdf'):
 
 
 try:
-    sql = "SELECT cust_id FROM `users_loan_agreement_signs` WHERE `created_at` <= '2019-11-28 11:11:00'"
+    sql = "SELECT cust_id FROM `user_call_status`"
+    # sql = "SELECT cust_id FROM `users_loan_agreement_signs` WHERE `created_at` <= '2019-11-28 11:11:00'"
     cur.execute(sql)
     res = cur.fetchall()
     for i in res:
         a.append(i[0])
     list_data = list(dict.fromkeys(a))
-    list_data = ['5494','38169','50502']
+    # list_data = ['5494','38169','50502']
     for j in list_data:
         # file = '/var/www/html/public/storage/uploads/' + str(j)
         file = os.getcwd() + '/' + str(j)
@@ -174,15 +198,16 @@ try:
                             filter_data.append(aa)
                     except Exception as e:
                         print(str(e)+'first'+j)
-            sql = "SELECT sign_date FROM users_loan_agreement_signs WHERE cust_id LIKE "+str(j)
+            sql = "SELECT fb_user_id FROM `user_call_status` WHERE cust_id LIKE "+str(j)
+            # sql = "SELECT sign_date FROM users_loan_agreement_signs WHERE cust_id LIKE "+str(j)
             cur.execute(sql)
             date_re = cur.fetchall()
             for d in date_re:
                 nor_date.append(d[0])
                 date = Date_Regex.search(d[0]).group()
                 b.append(date)
-            nor_date = ['2019-11-22 15:07:30','2019-09-28 15:01:40','2019-11-21 15:17:30','2019-09-28 15:02:41','2019-09-28 15:03:42']
-            b = ['2019-09-28', '2019-11-21','2019-09-28', '2019-09-24', '2019-11-22', '2019-09-24','2019-09-28','2019-09-24']
+            # nor_date = ['2019-11-22 15:07:30','2019-09-28 15:01:40','2019-11-21 15:17:30','2019-09-28 15:02:41','2019-09-28 15:03:42']
+            # b = ['2019-09-28', '2019-11-21','2019-09-28', '2019-09-24', '2019-11-22', '2019-09-24','2019-09-28','2019-09-24']
             if b is not None:
                 data_set = []
                 try:
@@ -210,18 +235,19 @@ try:
                             name_sql = "SELECT users_name, users_city  FROM `users_personal_infos` WHERE `cust_id` LIKE "+ str(j)
                             cur.execute(name_sql)
                             result_name = cur.fetchall()
-                            footer = {
-                                "Digitally Signed by: ": "",
-                                'Name: ': str(result_name[0][0]).capitalize(),
-                                'Location: ': str(result_name[0][1]).capitalize(),
-                                "Reason: ": 'Loan Agreement',
-                                'Date: ': da_list(),
-                            }
                             # ADD FOOTER
                             for data_nor in nor_data:
                                 ch_list = datetime.strptime(list_t, '%Y-%m-%d').strftime('%d-%m-%Y')
                                 datet = Date_Reg.search(data_nor).group()
                                 if datet == ch_list:
+                                    on_data_nor = data_nor.split('/')[-1]
+                                    footer = {
+                                        "Digitally Signed by: ": "",
+                                        'Name: ': str(result_name[0][0]).capitalize(),
+                                        'Location: ': str(result_name[0][1]).capitalize(),
+                                        "Reason: ": 'Loan Agreement',
+                                        'Date: ': da_list(),
+                                        }
                                     generate_footer(footer)
                                     merge_pdf(data_nor,data_nor)
 
